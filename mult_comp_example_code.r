@@ -14,9 +14,11 @@ model{
     m~dnorm(0,0.0001)
 	#non informative variance priors
     tau<-pow(sig,-2)
-    sig[i]~dunif(0,100)
+    sig~dunif(0,100)
+	tau.s<-pow(sig.s,-2)
+    sig.s~dunif(0,100)
 	#sum log likelihood
-    sumLL[i]<-sum(loglike[1:Nobs])
+    sumLL<-sum(loglike[1:Nobs])
   
   
   
@@ -42,8 +44,8 @@ model{
   }	
   #complete pooling 
   for(i in 1:Nobs){
-    Y.cp[i]~dnorm(mucp[groupID[i]],tau.cp)
-    loglike.cp[i]<-.5*log(tau.cp/(2*3.141593))-((tau.cp/2)*pow(Y.cp[i]-mu.cp[groupID[i]],2))
+    Y.cp[i]~dnorm(mu.cp,tau.cp)
+    loglike.cp[i]<-.5*log(tau.cp/(2*3.141593))-((tau.cp/2)*pow(Y.cp[i]-mu.cp,2))
   }
   #assign noninformative prior
 

@@ -83,17 +83,16 @@ for(i in 1:numsims){
 
 #set up model runs for each scenario to test
 for(i in 1:numsims){
-	datalist <- list(Nobs=dim(ynorm[[i]])[1], Y=y.norm[[i]]$y.dat, groupID=y.norm[[i]]$grID, Ngroup=grps[i], 
+	datalist <- list(Nobs=dim(y.norm[[i]])[1], Y=y.norm[[i]]$y.dat, groupID=y.norm[[i]]$grID, Ngroup=grps[i], 
 						Y.nh=y.norm[[i]]$y.dat, Y.cp=y.norm[[i]]$y.dat, Ncomp=dim(combTable[[i]])[1], g.c1=combTable[[i]]$g.c1,
 						g.c2=combTable[[i]]$g.c2)
 
 
-	# runtime parameters. Specify total iterations and how many runs you want to split it 
-	# into for RAM considerations. More splits = more final files but less max RAM use
+
 	n.adapt=2000
 	iter.tot=3000
 	#initialize model
-	s.mod.init=jags.model(paste0(wd.code, "\\mult_comp_example_script.r" ),
+	s.mod.init=jags.model(paste0(wd.code, "\\mult_comp_example_code.r" ),
 					  data=datalist,
 					 # inits=inits,
 					  n.adapt=n.adapt,
