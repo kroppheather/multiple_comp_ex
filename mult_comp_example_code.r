@@ -37,8 +37,8 @@ model{
   
   #calculate pairwise difference
   for(i in 1:Ncomp){
-    diff[i]<-mu[trt1.all[i]]-mu[trt2.all[i]]
-    diff.nh[i]<-mu.nh[trt1.all[i]]-mu.nh[trt2.all[i]]
+    diff[i]<-mu[g.c1[i]]-mu[g.c2[i]]
+    diff.nh[i]<-mu.nh[g.c1[i]]-mu.nh[g.c2[i]]
   }	
   #complete pooling 
   for(i in 1:Nobs){

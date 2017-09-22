@@ -7,12 +7,15 @@ library(coda)
 library(rjags)
 library(xtable)
 library(plyr)
+library(mcmcplots)
 
 
 #set the random generator seed used in example
 set.seed(14101066) 
 
-#
+#working directory for output
+wd.out <- "c:\\Users\\hkropp\\Google Drive\\mult_comp"
+wd.code <- "c:\\Users\\hkropp\\Documents\\GitHub\\multiple_comp_ex"
 
 ###############################################################################
 # Run two example scenarios from the manuscript
@@ -70,56 +73,69 @@ for(i in 1:numsims){
 	y.norm[[i]] <- ldply(y.temp, data.frame)
 
 }
-#need to get the start end end grow 
-
-
+#need to set up comparision ID
+comball <- list()
+combTable <- list()
+for(i in 1:numsims){
+	comball[[i]]<- combn(grps[i],2)
+	combTable[[i]] <- data.frame(g.c1=comball[[i]][1,], g.c2=comball[[i]][2,], gc.id=seq(1,dim(comball[[i]])[2]))
+}
 
 #set up model runs for each scenario to test
 for(i in 1:numsims){
-datalist <- list(Nobs=dim(ynorm[[i]])[1], Y=y.norm[[i]]$y.dat, groupID=y.norm[[i]]$grID, Ngroup=grps[i], 
+	datalist <- list(Nobs=dim(ynorm[[i]])[1], Y=y.norm[[i]]$y.dat, groupID=y.norm[[i]]$grID, Ngroup=grps[i], 
+						Y.nh=y.norm[[i]]$y.dat, Y.cp=y.norm[[i]]$y.dat, Ncomp=dim(combTable[[i]])[1], g.c1=combTable[[i]]$g.c1,
+						g.c2=combTable[[i]]$g.c2)
 
 
-# runtime parameters. Specify total iterations and how many runs you want to split it 
-# into for RAM considerations. More splits = more final files but less max RAM use
-n.adapt=1000
-iter.tot=3000
-#initialize model
-ptm<-proc.time()
-poodel=jags.model("source/jagsmodel indexing.R",
-                  data=datalist,
-                 # inits=inits,
-                  n.adapt=n.adapt,
-                  n.chains=3)
-#burnin
-update(poodel, n.iter=1000)
+	# runtime parameters. Specify total iterations and how many runs you want to split it 
+	# into for RAM considerations. More splits = more final files but less max RAM use
+	n.adapt=2000
+	iter.tot=3000
+	#initialize model
+	s.mod.init=jags.model(paste0(wd.code, "\\mult_comp_example_script.r" ),
+					  data=datalist,
+					 # inits=inits,
+					  n.adapt=n.adapt,
+					  n.chains=3)
 
-#ptm<-proc.time() #store proc time
-
-#iters=iter.tot/splits #calculate number of iterations per split
-#sampling
-
-  coda=coda.samples(poodel,variable.names=c("mu","m","sig.s","sig","mu.nh","sig.nh",
-                                          "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
-                                          "sumLL","diff","diff.nh"),
-                  n.iter=30000, thin=10)
-  save(coda,file=paste0("MC_jagsout_sim_", sim, ".R"))
-  rm(coda) #dump and clean memory
-  gc()
-#}
-
-print(paste0("Run time: ", proc.time() - ptm )) #run time
-#  =5 hrs for 3000 iterations.
+	 s.mod.coda=coda.samples(s.mod.init,variable.names=c("mu","m","sig.s","sig","mu.nh","sig.nh",
+											  "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
+											  "sumLL","diff","diff.nh"),
+					  n.iter=30000, thin=10)
+	 
 
 
-print(paste0("Model ", sim, " done."))
+	#pull out model stats
+	Mod.out<-summary(s.mod.coda)
+	dir.create(paste0(wd.out,"\\simulation",i))
 
-} #end of function
+	write.table(Mod.out$statistics, paste0(wd.out,"\\simulation",i,"\\mod_stats.csv"),
+			sep=",",row.names=TRUE)
+	write.table(Mod.out$quantiles, paste0(wd.out,"\\simulation",i,"\\mod_quant.csv"),
+			sep=",",row.names=TRUE)
 
-args<-commandArgs(TRUE)
-#step1 <- unlist(strsplit(x=args, split="_", perl=TRUE))
-#step1 <- unlist(strsplit(x=step1[3], split=".r", perl=TRUE))
-print(as.numeric(args))
-print(args)
+
+	#save coda
+
+	chain1<-as.matrix(codaobj.init[[1]])
+	write.table(chain1,paste0(wd.out,"\\simulation",i,"chain1_coda.csv"), sep=",")
+	chain2<-as.matrix(codaobj.init[[2]])
+	write.table(chain2,paste0(wd.out,"\\simulation",i,"chain2_coda.csv"), sep=",")
+	chain3<-as.matrix(codaobj.init[[3]])
+	write.table(chain3,paste0(wd.out,"\\simulation",i,"chain3_coda.csv"), sep=",")
+			
+
+#run mcmc plots on key params
+			
+mcmcplot(codaobj.init, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
+											  "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
+											  "sumLL","diff","diff.nh"),
+			dir=paste0(wd.out,"\\simulation",i))
+
+
+
+} #end of simulation models
 
 
 
