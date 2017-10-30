@@ -26,25 +26,43 @@ wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 #################################
 # read in data files            #
 #################################
-rData <- read.csv(paste0(wd.data,"\\rDatasub.csv"))
-scnData <- read.csv(paste0(wd.data,"\\scnDatasub.csv"))
-trueData <- read.csv(paste0(wd.data,"\\trueDatasub.csv"))
+#read in all data
+datMT <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\megatable_1.csv")
+datD <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\designall.csv")
+datT <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\allcomp_1.csv")
+
+#################################
+# choose scenario numbers       #
+#################################
+#look at two scenarios
+simN <- c(5,34)
 
 
 #################################
 # pull out data for each run    #
 #################################
-#number of scenarios to look at:
-numsims<-dim(scnData)[1] 
 
-#pull data into a list
+#get length of sims
+numsims<-length(simN)
+#subset the simulations
+#set up in a list format so the number
+#of simulations can be readily changed
+
 ranD <- list()
+scnD <- list()
 truthD <- list()
 
 for(i in 1:numsims){
-	ranD[[i]] <- rData[rData$scenarioid==scnData$scn[i],]
-	truthD[[i]] <- trueData[trueData$scn==scnData$scn[i],] 	
+	ranD[[i]] <- datMT[datMT$scenarioid==simN[i],]
+	scnD[[i]] <- datD[datD$scn==simN[i],]
+	truthD[[i]] <- datT[datT$scn==simN[i],]
 }
+
+scnData <- ldply(scnD, data.frame)
+
+
+
+
 
 #################################
 # Set up model run ##############
@@ -112,8 +130,8 @@ mcmcplot(s.mod.coda, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 #PP is hierarchical model
 # CP is the complete pooling model,
 # and NH is the non-hierarchical model 
-Pind<-function(PP,CP,NH){
-	(NH-PP)/(NH-CP)
+Pind<-function(HH,CP,NH){
+	(NH-HH)/(NH-CP)
 }
 
 #################################
