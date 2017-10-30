@@ -10,92 +10,60 @@ library(plyr)
 library(mcmcplots)
 
 
-#set the random generator seed used in example
-set.seed(14101066) 
 
-#working directory for output
-wd.out <- "c:\\Users\\hkropp\\Google Drive\\mult_comp"
+#################################
+# Users specified data directory#
+#################################
+
+#path to save output to
+wd.out <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\sub_out"
+#path for model code
 wd.code <- "c:\\Users\\hkropp\\Documents\\GitHub\\multiple_comp_ex"
+#path to read in data
+wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 
-###############################################################################
-# Run two example scenarios from the manuscript
-#note the number of scenarios and the values in them can all be altered
-# all information below needs to be filled out for each scenario
-###############################################################################
+
+#################################
+# read in data files            #
+#################################
+rData <- read.csv(paste0(wd.data,"\\rDatasub.csv"))
+scnData <- read.csv(paste0(wd.data,"\\scnDatasub.csv"))
+trueData <- read.csv(paste0(wd.data,"\\trueDatasub.csv"))
+
+
+#################################
+# pull out data for each run    #
+#################################
 #number of scenarios to look at:
-numsims<-2 # replicate in manuscript (r=1,2,...,100)
-N <- c(1000,1000) # observations Nk (Fig. 1A)
-grps <- c(20, 20) # group sizes K (Fig. 1B)
-h.sig <- c(1,1) # sigma global (Fig. 1C) sigma = 0.1 and 10 found in code below
-g.sig <- c(1,1)
-h.mu <- c(10,10) # mean global (Fig. 1D, m=0,10,100) set manually
-A <- c(4, 4) # Number of groups K to have mu k equal to other groups
-num.unbal <- c(0,4) # Number of unbalanced groups
-#percent missing in unbalanced groups
-per.missing1 <- c(0,0.30)
+numsims<-dim(scnData)[1] 
 
-#################################################################################
-# No need for user specification below this point  ##############################
-#################################################################################
+#pull data into a list
+ranD <- list()
+truthD <- list()
 
-#generate data for runs
-#generate group means. Putting in list format in case group or sample sizes were changed to be different sizes
-#initialize lists
-g.mu1 <- list()
-g.mu2 <- list()
-g.mu <- list()
-A.same <- list()
-y.temp<-list()
-y.norm<-list()
-groupBal <- list()
-
-#loop through the number of simulations
 for(i in 1:numsims){
-	#generate means for the group data without the same means
-	g.mu1[[i]] <- data.frame(grID=seq(1,grps[i]-A[i]),g.meanID=seq(1,grps[i]-A[i]),g.mu=rnorm(n=grps[i]-A[i], mean=h.mu[i], sd=h.sig[i]))
-	#now set the means to be the same for some groups
-	#first randomly select the means that will be the same
-	#also selecting with replacement so more than two groups can share the same mean
-	A.same[[i]] <- sample(seq(1,grps[i]-A[i]), A[i], replace=TRUE )
-	g.mu2[[i]] <- data.frame(grID=seq(grps[i]-A[i]+1,grps[i]),g.meanID=g.mu1[[i]]$g.meanID[A.same[[i]]],g.mu=g.mu1[[i]]$g.mu[A.same[[i]]])
-	#now combine both together
-	g.mu[[i]] <- rbind(g.mu1[[i]],g.mu2[[i]])
-		#generate data for  scenarios in groups
-		#first need to account for scenarios with unbalanced groups
-		groupBal[[i]] <- c(rep(1,num.unbal[i]),rep(0, grps[i]-num.unbal[i]))
-		
-		#generate data for all other groups
-		for(j in 1:grps[i]){
-		y.temp[[j]]<-data.frame(grID=rep(j,N[i]*((groupBal[[i]][j]*(1-per.missing1[i]))+(1-groupBal[[i]][j]))),
-						y.dat=rnorm(N[i]*((groupBal[[i]][j]*(1-per.missing1[i]))+(1-groupBal[[i]][j])),g.mu[[i]]$g.mu[j],sd=g.sig[i]))
-	
-	}
-	y.norm[[i]] <- ldply(y.temp, data.frame)
+	ranD[[i]] <- rData[rData$scenarioid==scnData$scn[i],]
+	truthD[[i]] <- trueData[trueData$scn==scnData$scn[i],] 	
+}
 
-}
-#need to set up comparision ID
-comball <- list()
-combTable <- list()
-for(i in 1:numsims){
-	comball[[i]]<- combn(grps[i],2)
-	combTable[[i]] <- data.frame(g.c1=comball[[i]][1,], g.c2=comball[[i]][2,], gc.id=seq(1,dim(comball[[i]])[2]))
-}
+#################################
+# Set up model run ##############
+#################################
+#run the model for each scenario
 
 #set up model runs for each scenario to test
 for(i in 1:numsims){
-	datalist <- list(Nobs=dim(y.norm[[i]])[1], Y=y.norm[[i]]$y.dat, groupID=y.norm[[i]]$grID, Ngroup=grps[i], 
-						Y.nh=y.norm[[i]]$y.dat, Y.cp=y.norm[[i]]$y.dat, Ncomp=dim(combTable[[i]])[1], g.c1=combTable[[i]]$g.c1,
-						g.c2=combTable[[i]]$g.c2)
+	datalist <- list(Nobs=dim(ranD[[i]])[1],Y=ranD[[i]]$Y, groupID=ranD[[i]]$treatid,
+						Y.nh=ranD[[i]]$Y.nh,Y.cp=ranD[[i]]$Y.cp,
+						Ngroup=scnData$grps[i], Ncomp=dim(truthD[[i]])[1],
+						g.c1=truthD[[i]]$trt, g.c2=truthD[[i]]$trt2)
 
 
 
-	n.adapt=2000
-	iter.tot=3000
 	#initialize model
-	s.mod.init=jags.model(paste0(wd.code, "\\mult_comp_example_code.r" ),
+	s.mod.init=jags.model(file=paste0(wd.code, "\\mult_comp_example_code.r" ),
 					  data=datalist,
-					 # inits=inits,
-					  n.adapt=n.adapt,
+					  n.adapt=2000,
 					  n.chains=3)
 
 	 s.mod.coda=coda.samples(s.mod.init,variable.names=c("mu","m","sig.s","sig","mu.nh","sig.nh",
@@ -117,17 +85,17 @@ for(i in 1:numsims){
 
 	#save coda
 
-	chain1<-as.matrix(codaobj.init[[1]])
+	chain1<-as.matrix(s.mod.coda[[1]])
 	write.table(chain1,paste0(wd.out,"\\simulation",i,"chain1_coda.csv"), sep=",")
-	chain2<-as.matrix(codaobj.init[[2]])
+	chain2<-as.matrix(s.mod.coda[[2]])
 	write.table(chain2,paste0(wd.out,"\\simulation",i,"chain2_coda.csv"), sep=",")
-	chain3<-as.matrix(codaobj.init[[3]])
+	chain3<-as.matrix(s.mod.coda[[3]])
 	write.table(chain3,paste0(wd.out,"\\simulation",i,"chain3_coda.csv"), sep=",")
 			
 
 #run mcmc plots on key params
 			
-mcmcplot(codaobj.init, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
+mcmcplot(s.mod.coda, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 											  "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
 											  "sumLL","diff","diff.nh"),
 			dir=paste0(wd.out,"\\simulation",i))
@@ -135,6 +103,176 @@ mcmcplot(codaobj.init, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 
 
 } #end of simulation models
+#################################
+# Calculate partial pooling######
+#################################
+#partial pooling indices 
+#for degree of pooling
+
+#PP is hierarchical model
+# CP is the complete pooling model,
+# and NH is the non-hierarchical model 
+Pind<-function(PP,CP,NH){
+	(NH-PP)/(NH-CP)
+}
+
+#################################
+# partial pooling with DIC ######
+#################################
+
+#read in saved results
+mod.out <-list()
+for(i in 1:numsims){
+	mod.out[[i]] <-	read.csv(paste0(wd.out,"\\simulation",i,"\\mod_stats.csv"))
+	
+}
+#pull out sum log likelihood and model results from output
+dexps <- "\\[*[[:digit:]]*\\]"
+dexps2 <- "\\D"
+#mean out for each model
+mu.cp <- list()
+mu.nh <- list()
+mu.hh <- list()
+#sum log likelihood
+sumLL <- list()
+
+for(i in 1:numsims){
+	mu.cp[[i]]<-data.frame(Mean.cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.cp",1],
+							SD.cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig.cp",1])
+	mu.nh[[i]]<-data.frame(Mean.nh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh",1],
+							SD.nh=rep(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig.nh",1],
+									length(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh",1])),
+							treatid=gsub(dexps2,"",rownames(mod.out[[i]])[gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh"]))							
+	mu.hh[[i]]<-data.frame(Mean.hh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu",1],
+							SD.hh=rep(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig",1],
+									length(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu",1])),
+							treatid=gsub(dexps2,"",rownames(mod.out[[i]])[gsub(dexps,"",rownames(mod.out[[i]]))=="mu"]))
+	#get the mean sumLL for each scenario
+	sumLL[[i]]<-data.frame(hh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL",1],
+		nh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL.nh",1],
+		cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL.cp",1])
+							
+}
+#join means back into original data for fast calculation
+pd.df1 <- list()
+pd.df <- list()
+for(i in 1:numsims){
+	#join likelihood means back into original data for calculation
+	pd.df1[[i]] <- join(ranD[[i]],mu.hh[[i]],  by=c("treatid"), type="left")
+	pd.df[[i]] <- join(pd.df1[[i]], mu.nh[[i]], by=c("treatid"), type="left")
+	pd.df[[i]]$Mean.cp <- rep(mu.cp[[i]]$Mean.cp, dim(pd.df[[i]])[1])
+	pd.df[[i]]$SD.cp <- rep(mu.cp[[i]]$SD.cp, dim(pd.df[[i]])[1])
+
+}
+
+#calculate pd from DIC for each scenario
+pd.hh <- numeric(0)
+pd.nh <- numeric(0)
+pd.cp <- numeric(0)
+for(i in 1:numsims){
+	#join likelihood means back into original data for calculation
+	pd.hh[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.hh,pd.df[[i]]$SD.hh)))-sumLL[[i]]$hh)
+	pd.nh[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.nh,pd.df[[i]]$SD.nh)))-sumLL[[i]]$nh)
+	pd.cp[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.cp,pd.df[[i]]$SD.cp)))-sumLL[[i]]$cp)	
+}
+
+#calculate ppi
+PPI.pd <-numeric(0)
+
+for(i in 1:numsims){
+	PPI.pd[i] <- Pind(pd.hh[i],pd.cp[i],pd.nh[i])
+}
+
+#add to scnData
+scnData$PPI.pd <- PPI.pd
 
 
+#################################
+# partial pooling with WAIC######
+#################################
 
+#read in coda
+CODA1 <- list()
+CODA2 <- list()
+CODA3 <- list()
+CODAALL <- list()
+for(i in 1:numsims){
+	CODA1[[i]] <- read.csv(paste0(wd.out,"\\simulation",i,"chain1_coda.csv"))
+	CODA2[[i]] <- read.csv(paste0(wd.out,"\\simulation",i,"chain2_coda.csv"))
+	CODA3[[i]] <- read.csv(paste0(wd.out,"\\simulation",i,"chain3_coda.csv"))
+	#join all iterations together
+	CODAALL[[i]] <- rbind(CODA1[[i]],CODA2[[i]],CODA3[[i]])
+}
+#subset to pull mean and standard deviation out of columns
+dexps3 <- "\\.*[[:digit:]]*\\."
+
+mu.hh <- list()
+mu.nh <- list()
+mu.cp <- list()
+sig.hh <- list()
+sig.nh <- list()
+sig.cp <- list()
+
+for(i in 1:numsims){
+	mu.hh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="mu"]
+	mu.nh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="munh"]
+	mu.cp[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="mucp"]
+	sig.hh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="sig"]
+	sig.nh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="signh"]
+	sig.cp[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="sigcp"]	
+	
+}
+
+#calculate log posterior density for each data point and iteration
+#each simulation has a matrix that is simulationsXdatapoints
+lpd.nh <- matrix()
+Lpd.nh <- list()
+lpd.cp <- matrix()
+Lpd.cp <- list()
+lpd.hh <- matrix()
+Lpd.hh <- list()
+
+
+for(i in 1:numsims){
+	#set up empty matrix
+	lpd.nh <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
+	lpd.hh <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
+	lpd.cp <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
+	for(j in 1:dim(ranD[[i]])[1]){
+		lpd.nh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.nh[[i]][,ranD[[i]]$treatid[j]],sig.nh[[i]] ))
+		lpd.hh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.hh[[i]][,ranD[[i]]$treatid[j]],sig.hh[[i]] ))
+		lpd.cp[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.cp[[i]],sig.cp[[i]] ))
+	}
+	
+	Lpd.nh[[i]] <- lpd.nh
+	Lpd.hh[[i]] <- lpd.hh
+	Lpd.cp[[i]] <- lpd.cp
+}
+
+
+#find the variation of lpd across iterations for a given datapoint/parameter
+var.lpd.hh <- list()
+var.lpd.nh <- list()
+var.lpd.cp <- list()
+
+for(i in 1:numsims){
+	var.lpd.hh[[i]] <- apply(Lpd.hh[[i]],2,"var")
+	var.lpd.nh[[i]] <- apply(Lpd.nh[[i]],2,"var")
+	var.lpd.cp[[i]] <- apply(Lpd.cp[[i]],2,"var")
+}
+
+#final WAIC calculation
+#calculate the sum of the variation across all observations now
+pWAIC.nh <- numeric(0)
+pWAIC.hh <- numeric(0)
+pWAIC.cp <- numeric(0)
+for(i in 1:numsims){
+	pWAIC.nh[i] <- sum(var.lpd.nh[[i]])
+	pWAIC.hh[i] <- sum(var.lpd.hh[[i]])
+	pWAIC.cp[i] <- sum(var.lpd.cp[[i]])
+}
+
+#add PPI to scenario data
+scnData$PPI.waic <-  Pind(pWAIC.hh,pWAIC.cp,pWAIC.nh)
+
+scnData
