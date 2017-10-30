@@ -24,15 +24,15 @@ wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 #################################
 # choose scenario numbers       #
 #################################
-#look at two scenarios
+#look at a few scenarios
 simN <- c(3,5,28,34,37)
 
 #################################
 # read in data files            #
 #################################
 #read in all data
-datMT <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\megatable_1.csv")
-datD <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\designall.csv")
+datMT <- read.csv(paste0(wd.data,"\\megatable_1.csv"))
+datD <- read.csv(paste0(wd.data,"\\designall.csv"))
 
 
 
@@ -57,9 +57,6 @@ for(i in 1:numsims){
 }
 
 scnData <- ldply(scnD, data.frame)
-
-
-
 
 
 #################################
@@ -291,5 +288,8 @@ for(i in 1:numsims){
 #add PPI to scenario data
 scnData$PPI.waic <-  Pind(pWAIC.hh,pWAIC.cp,pWAIC.nh)
 
+#look at scenarios data
+scnData
+#save scenarios outcomes
 write.table(scnData, paste0(wd.out,"\\PPIforScenarios.csv"), row.names=FALSE,
 			sep=",")
