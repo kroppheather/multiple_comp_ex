@@ -5,7 +5,6 @@
 #load jags libraries
 library(coda)
 library(rjags)
-library(xtable)
 library(plyr)
 library(mcmcplots)
 
@@ -22,6 +21,11 @@ wd.code <- "c:\\Users\\hkropp\\Documents\\GitHub\\multiple_comp_ex"
 #path to read in data
 wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 
+#################################
+# choose scenario numbers       #
+#################################
+#look at two scenarios
+simN <- c(3,5,28,34,37)
 
 #################################
 # read in data files            #
@@ -29,13 +33,7 @@ wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 #read in all data
 datMT <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\megatable_1.csv")
 datD <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\designall.csv")
-datT <- read.csv("c:\\Users\\hkropp\\Google Drive\\mult_comp\\data\\allcomp_1.csv")
 
-#################################
-# choose scenario numbers       #
-#################################
-#look at two scenarios
-simN <- c(5,34)
 
 
 #################################
@@ -50,12 +48,12 @@ numsims<-length(simN)
 
 ranD <- list()
 scnD <- list()
-truthD <- list()
+
 
 for(i in 1:numsims){
 	ranD[[i]] <- datMT[datMT$scenarioid==simN[i],]
 	scnD[[i]] <- datD[datD$scn==simN[i],]
-	truthD[[i]] <- datT[datT$scn==simN[i],]
+
 }
 
 scnData <- ldply(scnD, data.frame)
@@ -293,4 +291,5 @@ for(i in 1:numsims){
 #add PPI to scenario data
 scnData$PPI.waic <-  Pind(pWAIC.hh,pWAIC.cp,pWAIC.nh)
 
-scnData
+write.table(scnData, paste0(wd.out,"\\PPIforScenarios.csv"), row.names=FALSE,
+			sep=",")
