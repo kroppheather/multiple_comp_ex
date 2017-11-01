@@ -21,25 +21,20 @@ wd.code <- "c:\\Users\\hkropp\\Documents\\GitHub\\multiple_comp_ex"
 #path to read in data
 wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
 
-#################################
-# choose scenario numbers       #
-#################################
-#look at a few scenarios
-simN <- c(3,5,28,34,37)
 
 #################################
 # read in data files            #
 #################################
 #read in all data
-datMT <- read.csv(paste0(wd.data,"\\megatable_1.csv"))
-datD <- read.csv(paste0(wd.data,"\\designall.csv"))
-
+datMT <- read.csv(paste0(wd.data,"\\randomDataAppendix.csv"))
+scnData <- read.csv(paste0(wd.data,"\\scenarioDataAppendix.csv"))
+groupCompD <-  read.csv(paste0(wd.data,"\\groupComparisionDataAppendix.csv"))
 
 
 #################################
 # pull out data for each run    #
 #################################
-
+simN <- scnData$scenarioid
 #get length of sims
 numsims<-length(simN)
 #subset the simulations
@@ -47,16 +42,13 @@ numsims<-length(simN)
 #of simulations can be readily changed
 
 ranD <- list()
-scnD <- list()
-
-
+groupD <- list()
 for(i in 1:numsims){
 	ranD[[i]] <- datMT[datMT$scenarioid==simN[i],]
-	scnD[[i]] <- datD[datD$scn==simN[i],]
-
+	groupD[[i]] <- groupCompD[groupCompD$scenarioid==simN[i],]
 }
 
-scnData <- ldply(scnD, data.frame)
+
 
 
 #################################
@@ -66,10 +58,10 @@ scnData <- ldply(scnD, data.frame)
 
 #set up model runs for each scenario to test
 for(i in 1:numsims){
-	datalist <- list(Nobs=dim(ranD[[i]])[1],Y=ranD[[i]]$Y, groupID=ranD[[i]]$treatid,
+	datalist <- list(Nobs=dim(ranD[[i]])[1],Y=ranD[[i]]$Y, groupID=ranD[[i]]$groupid,
 						Y.nh=ranD[[i]]$Y.nh,Y.cp=ranD[[i]]$Y.cp,
-						Ngroup=scnData$grps[i], Ncomp=dim(truthD[[i]])[1],
-						g.c1=truthD[[i]]$trt, g.c2=truthD[[i]]$trt2)
+						Ngroup=scnData$grps[i], Ncomp=dim(groupD[[i]])[1],
+						g.c1=groupD[[i]]$groupid1, g.c2=groupD[[i]]$groupid2)
 
 
 
@@ -129,76 +121,6 @@ Pind<-function(HH,CP,NH){
 	(NH-HH)/(NH-CP)
 }
 
-#################################
-# partial pooling with DIC ######
-#################################
-
-#read in saved results
-mod.out <-list()
-for(i in 1:numsims){
-	mod.out[[i]] <-	read.csv(paste0(wd.out,"\\simulation",i,"\\mod_stats.csv"))
-	
-}
-#pull out sum log likelihood and model results from output
-dexps <- "\\[*[[:digit:]]*\\]"
-dexps2 <- "\\D"
-#mean out for each model
-mu.cp <- list()
-mu.nh <- list()
-mu.hh <- list()
-#sum log likelihood
-sumLL <- list()
-
-for(i in 1:numsims){
-	mu.cp[[i]]<-data.frame(Mean.cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.cp",1],
-							SD.cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig.cp",1])
-	mu.nh[[i]]<-data.frame(Mean.nh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh",1],
-							SD.nh=rep(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig.nh",1],
-									length(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh",1])),
-							treatid=gsub(dexps2,"",rownames(mod.out[[i]])[gsub(dexps,"",rownames(mod.out[[i]]))=="mu.nh"]))							
-	mu.hh[[i]]<-data.frame(Mean.hh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu",1],
-							SD.hh=rep(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sig",1],
-									length(mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="mu",1])),
-							treatid=gsub(dexps2,"",rownames(mod.out[[i]])[gsub(dexps,"",rownames(mod.out[[i]]))=="mu"]))
-	#get the mean sumLL for each scenario
-	sumLL[[i]]<-data.frame(hh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL",1],
-		nh=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL.nh",1],
-		cp=mod.out[[i]][gsub(dexps,"",rownames(mod.out[[i]]))=="sumLL.cp",1])
-							
-}
-#join means back into original data for fast calculation
-pd.df1 <- list()
-pd.df <- list()
-for(i in 1:numsims){
-	#join likelihood means back into original data for calculation
-	pd.df1[[i]] <- join(ranD[[i]],mu.hh[[i]],  by=c("treatid"), type="left")
-	pd.df[[i]] <- join(pd.df1[[i]], mu.nh[[i]], by=c("treatid"), type="left")
-	pd.df[[i]]$Mean.cp <- rep(mu.cp[[i]]$Mean.cp, dim(pd.df[[i]])[1])
-	pd.df[[i]]$SD.cp <- rep(mu.cp[[i]]$SD.cp, dim(pd.df[[i]])[1])
-
-}
-
-#calculate pd from DIC for each scenario
-pd.hh <- numeric(0)
-pd.nh <- numeric(0)
-pd.cp <- numeric(0)
-for(i in 1:numsims){
-	#join likelihood means back into original data for calculation
-	pd.hh[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.hh,pd.df[[i]]$SD.hh)))-sumLL[[i]]$hh)
-	pd.nh[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.nh,pd.df[[i]]$SD.nh)))-sumLL[[i]]$nh)
-	pd.cp[i] <- 2*(sum(log(dnorm(pd.df[[i]]$Y,pd.df[[i]]$Mean.cp,pd.df[[i]]$SD.cp)))-sumLL[[i]]$cp)	
-}
-
-#calculate ppi
-PPI.pd <-numeric(0)
-
-for(i in 1:numsims){
-	PPI.pd[i] <- Pind(pd.hh[i],pd.cp[i],pd.nh[i])
-}
-
-#add to scnData
-scnData$PPI.pd <- PPI.pd
-
 
 #################################
 # partial pooling with WAIC######
@@ -252,8 +174,8 @@ for(i in 1:numsims){
 	lpd.hh <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
 	lpd.cp <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
 	for(j in 1:dim(ranD[[i]])[1]){
-		lpd.nh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.nh[[i]][,ranD[[i]]$treatid[j]],sig.nh[[i]] ))
-		lpd.hh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.hh[[i]][,ranD[[i]]$treatid[j]],sig.hh[[i]] ))
+		lpd.nh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.nh[[i]][,ranD[[i]]$groupid[j]],sig.nh[[i]] ))
+		lpd.hh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.hh[[i]][,ranD[[i]]$groupid[j]],sig.hh[[i]] ))
 		lpd.cp[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.cp[[i]],sig.cp[[i]] ))
 	}
 	
