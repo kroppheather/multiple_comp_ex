@@ -4,7 +4,7 @@ Data associated with an example subset of scenarios in the appendix of Ogle _et.
 ## Files:
 
 
-#### randomDataAppendix
+#### randomDataAppendix.csv
 Randomly generated data used in the Ogle _et. al._ simulation experiment 
 
 |  Column  |  Description  | 
@@ -15,7 +15,7 @@ Randomly generated data used in the Ogle _et. al._ simulation experiment
 |  scenarioid  | unique identifier for the scenario associated with the simulation  |
 | groupid  | unique identifer for the group within the scenario  |
 
-#### scenarioDataAppendix
+#### scenarioDataAppendix.csv
 Description of scenario settings for comparisons in the Ogle _et. al._ simulation experiment 
 
 |  Column  |  Description  | 
@@ -29,7 +29,7 @@ Description of scenario settings for comparisons in the Ogle _et. al._ simulatio
 |  unbal  |  number of missing observations in unbalanced groups  |
  
 
-#### groupComparisionDataAppendix
+#### groupComparisionDataAppendix.csv
 True means for group comparison and unique IDs for groups and scenarios. 
 
 |  Column  |  Description  | 
