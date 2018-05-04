@@ -1,10 +1,10 @@
-# Bayesian Hierarchical Model Multiple Comparisions Project
-A project aimed at identifying the need to account for multiple comparisions in hierarchical Bayesian models. The files contain model code and calculations for examining the degree of the "borrowing of strength" in heirarchical models for multiple comparisions.
+# Bayesian Hierarchical Model Multiple Comparisons Project
+A project aimed at identifying the need to account for multiple comparisons in hierarchical Bayesian models. The files contain model code and calculations for examining the degree of the "borrowing of strength" in heirarchical models for multiple comparisions.
 
 #### Author names: Kiona Ogle, Drew Peltier, Michael Fell, Jessica Guo, Heather Kropp, Jarett Barber
 
 ##### appendix_data 
 Contains data  for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 
 
-##### appendix_code
+##### appendix
  Contains analysis code  for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 
