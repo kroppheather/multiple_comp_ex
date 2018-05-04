@@ -3,8 +3,8 @@ A project aimed at identifying the need to account for multiple comparisions in 
 
 #### Author names:
 
-##### all_data 
-Contains data and code for looking at all of the scenarios for group size, balance, and variance outline in Ogle _et. al. (in prep)_ The user calculate the partial pooling index for all scenarios.
-
 ##### appendix_data 
-Contains data and code for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 
+Contains data  for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 
+
+##### appendix_code
+ Contains analysis code  for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 

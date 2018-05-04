@@ -1,6 +1,12 @@
+########################################################################
+####### Code to run example multiple comparisions simulation model######
+########################################################################
+
+
 model{
+  # hierarhical model (focal model)
   for(i in 1:Nobs){
-	#likelihood for the data for all gropus 
+	#likelihood for the data for all groups 
     Y[i]~dnorm(mu[groupID[i]],tau)
 	#log likelihood
     loglike[i]<-.5*log(tau/(2*3.141593))-((tau/2)*pow(Y[i]-mu[groupID[i]],2))
@@ -23,7 +29,7 @@ model{
   
   
   
-  #non-hierichical 
+  #non-hierichical version
   for(i in 1:Nobs){
     Y.nh[i]~dnorm(mu.nh[groupID[i]],tau.nh)
 	#log likelihood

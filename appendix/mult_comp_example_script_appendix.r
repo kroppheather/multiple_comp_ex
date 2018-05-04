@@ -13,34 +13,47 @@ library(mcmcplots)
 #################################
 # Users specified data directory#
 #################################
+#SPECIFY LOCAL DIRECTORY WHERE YOUR GITHUB REPOSITORY IS 
+local.path <- #"PATH HERE"
+#SPECIFY LOCAL DIRECTORY WHERE YOU WOULD LIKE TO SAVE MODEL OUTPUT
+wd.out <- #"PATH HERE"
 
-#path to save output to
-wd.out <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\sub_out"
+#the file paths for the script and data within the github repository download
+
 #path for model code
-wd.code <- "c:\\Users\\hkropp\\Documents\\GitHub\\multiple_comp_ex"
+wd.code <- paste0(local.path,"\\appendix"
 #path to read in data
-wd.data <- "c:\\Users\\hkropp\\Google Drive\\mult_comp\\data"
+wd.data <- paste0(local.path,"\\appendix_data")
 
 
 #################################
 # read in data files            #
 #################################
 #read in all data
+#randomly generated data used in the simulations
 datMT <- read.csv(paste0(wd.data,"\\randomDataAppendix.csv"))
+#description of each simulation scenario
 scnData <- read.csv(paste0(wd.data,"\\scenarioDataAppendix.csv"))
+#true means for comparision of groups in each scenario
 groupCompD <-  read.csv(paste0(wd.data,"\\groupComparisionDataAppendix.csv"))
 
 
 #################################
-# pull out data for each run    #
+# organize data for             #
+# example simulations           #
 #################################
-simN <- scnData$scenarioid
-#get length of sims
-numsims<-length(simN)
-#subset the simulations
-#set up in a list format so the number
-#of simulations can be readily changed
 
+#this appendix focuses on a subset of 4 simulations
+#that are examples of simulations with 
+
+#scenario identifier for example simulation
+simN <- scnData$scenarioid
+
+#number of simulations that we will look at (here its 4)
+numsims<-length(simN)
+
+#subset the data for simulation so that each simulation
+#can be run separately
 ranD <- list()
 groupD <- list()
 for(i in 1:numsims){
@@ -49,12 +62,13 @@ for(i in 1:numsims){
 }
 
 
-
-
 #################################
 # Set up model run ##############
 #################################
-#run the model for each scenario
+
+#run the model for each simulation scenario
+#hierarchical, non-hierarchical, and complete pooling models
+#are all run in the same model code for each simulation
 
 #set up model runs for each scenario to test
 for(i in 1:numsims){
@@ -65,20 +79,20 @@ for(i in 1:numsims){
 
 
 
-	#initialize model
+	#initialize Bayesian (JAGS) models
 	s.mod.init=jags.model(file=paste0(wd.code, "\\mult_comp_example_code.r" ),
 					  data=datalist,
 					  n.adapt=2000,
 					  n.chains=3)
-
+	#update the initialized Bayesian (JAGS) models and monitor quantities (parameters) of interest
 	 s.mod.coda=coda.samples(s.mod.init,variable.names=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 											  "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
-											  "sumLL","diff","diff.nh"),
+											  "sumLL","diff","diff.nh", "loglike","loglike.nh","loglike.cp"),
 					  n.iter=30000, thin=10)
 	 
+	#save model run information	
 
-
-	#pull out model stats
+	# extract posterior summary statistics of interest.
 	Mod.out<-summary(s.mod.coda)
 	dir.create(paste0(wd.out,"\\simulation",i))
 
@@ -98,7 +112,7 @@ for(i in 1:numsims){
 	write.table(chain3,paste0(wd.out,"\\simulation",i,"chain3_coda.csv"), sep=",")
 			
 
-#run mcmc plots on key params
+	#run mcmc plots on key params
 			
 mcmcplot(s.mod.coda, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 											  "mu.cp","sig.cp","sumLL.cp","sumLL.nh",
@@ -108,17 +122,18 @@ mcmcplot(s.mod.coda, parms=c("mu","m","sig.s","sig","mu.nh","sig.nh",
 
 
 } #end of simulation models
+
 #################################
 # Calculate partial pooling######
 #################################
 #partial pooling indices 
 #for degree of pooling
 
-#PP is hierarchical model
-# CP is the complete pooling model,
-# and NH is the non-hierarchical model 
-Pind<-function(HH,CP,NH){
-	(NH-HH)/(NH-CP)
+#HB is hierarchical model
+#CP is the complete pooling model,
+#NH is the non-hierarchical model 
+Pind<-function(HB,CP,NH){
+	(NH-HB)/(NH-CP)
 }
 
 
@@ -126,7 +141,9 @@ Pind<-function(HH,CP,NH){
 # partial pooling with WAIC######
 #################################
 
-#read in coda
+#read in coda from model runs
+#for each of the four scenario examples
+#so that WAIC can be calculated
 CODA1 <- list()
 CODA2 <- list()
 CODA3 <- list()
@@ -138,76 +155,46 @@ for(i in 1:numsims){
 	#join all iterations together
 	CODAALL[[i]] <- rbind(CODA1[[i]],CODA2[[i]],CODA3[[i]])
 }
-#subset to pull mean and standard deviation out of columns
+#subset to pull log likelihood out of columns
 dexps3 <- "\\.*[[:digit:]]*\\."
 
-mu.hh <- list()
-mu.nh <- list()
-mu.cp <- list()
-sig.hh <- list()
-sig.nh <- list()
-sig.cp <- list()
+loglike.hh <- list()
+loglike.nh <- list()
+loglike.cp <- list()
+
 
 for(i in 1:numsims){
-	mu.hh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="mu"]
-	mu.nh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="munh"]
-	mu.cp[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="mucp"]
-	sig.hh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="sig"]
-	sig.nh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="signh"]
-	sig.cp[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="sigcp"]	
+	loglike.hh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="loglike"]
+	loglike.nh[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="loglikenh"]
+	loglike.cp[[i]]<-CODAALL[[i]][,gsub(dexps3,"",colnames(CODAALL[[i]]))=="loglikecp"]
+
 	
 }
 
-#calculate log posterior density for each data point and iteration
-#each simulation has a matrix that is simulationsXdatapoints
-lpd.nh <- matrix()
-Lpd.nh <- list()
-lpd.cp <- matrix()
-Lpd.cp <- list()
-lpd.hh <- matrix()
-Lpd.hh <- list()
 
+#calculate the variation of log likelihood across iterations of the model
+var.ll.hh <- list()
+var.ll.nh <- list()
+var.ll.cp <- list()
 
 for(i in 1:numsims){
-	#set up empty matrix
-	lpd.nh <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
-	lpd.hh <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
-	lpd.cp <- matrix(rep(NA,dim(ranD[[i]])[1]*dim(CODAALL[[i]])[1]), ncol=dim(ranD[[i]])[1])
-	for(j in 1:dim(ranD[[i]])[1]){
-		lpd.nh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.nh[[i]][,ranD[[i]]$groupid[j]],sig.nh[[i]] ))
-		lpd.hh[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.hh[[i]][,ranD[[i]]$groupid[j]],sig.hh[[i]] ))
-		lpd.cp[,j]<- log(dnorm(ranD[[i]]$Y[j],mu.cp[[i]],sig.cp[[i]] ))
-	}
-	
-	Lpd.nh[[i]] <- lpd.nh
-	Lpd.hh[[i]] <- lpd.hh
-	Lpd.cp[[i]] <- lpd.cp
-}
-
-
-#find the variation of lpd across iterations for a given datapoint/parameter
-var.lpd.hh <- list()
-var.lpd.nh <- list()
-var.lpd.cp <- list()
-
-for(i in 1:numsims){
-	var.lpd.hh[[i]] <- apply(Lpd.hh[[i]],2,"var")
-	var.lpd.nh[[i]] <- apply(Lpd.nh[[i]],2,"var")
-	var.lpd.cp[[i]] <- apply(Lpd.cp[[i]],2,"var")
+	var.ll.hh[[i]] <- apply(loglike.hh[[i]],2,"var")
+	var.ll.nh[[i]] <- apply(loglike.nh[[i]],2,"var")
+	var.ll.cp[[i]] <- apply(loglike.cp[[i]],2,"var")
 }
 
 #final WAIC calculation
-#calculate the sum of the variation across all observations now
+#calculate the sum of the variation across all scenarios
 pWAIC.nh <- numeric(0)
 pWAIC.hh <- numeric(0)
 pWAIC.cp <- numeric(0)
 for(i in 1:numsims){
-	pWAIC.nh[i] <- sum(var.lpd.nh[[i]])
-	pWAIC.hh[i] <- sum(var.lpd.hh[[i]])
-	pWAIC.cp[i] <- sum(var.lpd.cp[[i]])
+	pWAIC.nh[i] <- sum(var.ll.nh[[i]])
+	pWAIC.hh[i] <- sum(var.ll.hh[[i]])
+	pWAIC.cp[i] <- sum(var.ll.cp[[i]])
 }
 
-#add PPI to scenario data
+#add PPI calculation to scenario information for comparison 
 scnData$PPI.waic <-  Pind(pWAIC.hh,pWAIC.cp,pWAIC.nh)
 
 #look at scenarios data
