@@ -8,3 +8,5 @@ Contains data  for a pre-defined subset of scenarios included in the appendix in
 
 ##### appendix
  Contains analysis code  for a pre-defined subset of scenarios included in the appendix in Ogle _et. al. (in prep)_ 
+ 
+ [![DOI](https://zenodo.org/badge/104345019.svg)](https://zenodo.org/badge/latestdoi/104345019)
